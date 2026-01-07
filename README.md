@@ -14,41 +14,52 @@ Autonomous decision-making is achieved through the application of fundamental pr
 
 The rover interprets physical sensor data using unit conversions, geometric modeling, and trigonometric calculations to estimate its orientation and position. All quantities are computed relative to the rover’s initial position; hence, the initial X and Y coordinates, as well as the heading angle relative to the Y-axis, are initialized to zero.
 
-### Kinematic Interpretation
+### Orientation and Position Estimation
 
-The angular position of each servo motor is directly available in degrees; however, the rover’s global heading may not be explicitly measured. The heading in a turning maneuver must estimated from the elapsed rotation time and the linear velocity of the wheels relative to the previous pose, using the horizontal separation between the wheels:
+The rover estimates its orientation and position using wheel kinematics and elapsed time, without relying on external localization systems.
 
-Wheel linear velocity is derived from the motor RPM and wheel diameter:
+**Servo angles** are read directly in degrees; however, the rover’s **global heading** cannot be measured directly and must be estimated using wheel kinematics and elapsed time.
 
-\[C = \pi d\]
+The heading is estimated from:
+  - The **linear velocity of the wheels**
+  - The **elapsed time spent rotating**
+  - The **horizontal separation between the wheels**
 
-\[v = \frac{\text{RPM}}{60} \cdot C\]
+**Wheel linear velocity** is computed from the wheel diameter (65 mm) and motor speed (RPM):
 
-where \( d = 65\,\text{mm} \) is the wheel diameter and \( C \) is the wheel circumference.
+  \[
+  v = \pi \cdot D \cdot \frac{\text{RPM}}{60}
+  \]
 
-The angular velocity of the rover during a turn may then be derived as:
+**Angular velocity during a turn** is derived from differential wheel motion and wheel separation (126 mm):
 
-\[\omega = \frac{2v}{w}\]
+  \[
+  \omega = \frac{2v}{W} \cdot \frac{180}{\pi}
+  \]
 
-where \( w = 126\,\text{mm} \) is the wheel separation.
+- **Distance traveled** over a control interval is estimated as:
 
-The change in heading over time is then computed as:
+  \[
+  d = v \cdot \Delta t
+  \]
 
-\[\Delta \theta = \omega \cdot \Delta t\]
+- **Heading is updated incrementally** using the estimated angular velocity:
 
-Distance traveled is estimated from linear velocity:
+  \[
+  \theta_{t+1} = \theta_t + \omega \cdot \Delta t
+  \]
 
-\[\Delta s = v \cdot \Delta t\]
+- **Position is updated in the 2D plane** using standard planar motion equations:
 
-Using these quantities, the rover’s pose is updated iteratively:
+  \[
+  x_{t+1} = x_t + d \cdot \cos(\theta)
+  \]
 
-\[\theta_{k+1} = \theta_k + \Delta \theta\]
+  \[
+  y_{t+1} = y_t + d \cdot \sin(\theta)
+  \]
 
-\[x_{k+1} = x_k + \Delta s \cdot \cos(\theta_{k+1})\]
-
-\[y_{k+1} = y_k + \Delta s \cdot \sin(\theta_{k+1})\]
-
-This model enables continuous estimation of rover orientation and displacement without reliance on external localization systems, making it well-suited for embedded, resource-constrained platforms.
+This incremental kinematic update loop enables continuous estimation of the rover’s **orientation** and **relative X–Y position** during autonomous operation, while remaining lightweight and computationally efficient for embedded hardware.
 
 ---
 
