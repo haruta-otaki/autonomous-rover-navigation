@@ -1,63 +1,81 @@
 # Autonomous Rover with Sensor-Based Navigation   
 
-This project presents the design and implementation of a fully autonomous mobile rover using an Arduino Mega, developed as a systems-level exploration of embedded control, sensor integration, and real-time decision-making. The rover autonomously navigates its environment using rotating ultrasonic sensors for 360° obstacle detection, differential motor control for motion execution, and geometric kinematic modeling to estimate orientation and relative position. Emphasis is placed on hardware-aware algorithm design, power domain separation, and reliability under constrained computational resources, mirroring core challenges in real-world robotic and planetary exploration systems.
+This project explores the design of autonomous, spacecraft-inspired robotic systems through the development of a self-navigating rover. Inspired by planetary exploration rovers (e.g. NASA’s *Perseverance*), the system focuses on autonomous navigation, obstacle detection, and decision-making in uncertain environments. The rover operates by continuously scanning its surroundings using rotating ultrasonic sensors, evaluating alternative paths and selects a direction with minimal perceived interference when an obstacle is detected.
 
 ## Overview
 
-This repository contains the design and implementation of a fully autonomous mobile rover built on an **Arduino Mega**, capable of **sensor-based navigation and real-time obstacle avoidance**. The rover operates without external localization, vision systems, or user input, relying instead on ultrasonic distance sensing, servo-driven environmental scanning, and embedded motion modeling.
+This project presents the design and implementation of an autonomous rover capable of sensor-driven navigation and obstacle avoidance. The system integrates ultrasonic distance sensors, micro servo motors, DC drive motors, and motor drivers controlled by an Arduino Mega to perceive its environment, detect obstructions, and dynamically adjust its trajectory toward regions of minimal interference.
 
-The project was developed as a final course project for *PHY-315-A* at Davidson College and draws inspiration from autonomous planetary rovers such as NASA’s *Perseverance*, with an emphasis on **hardware-level system design**, **embedded control**, and **real-time physical interaction**.
-
----
-
-## Key Features
-
-- Fully autonomous navigation with no remote control
-- Real-time obstacle detection using ultrasonic sensors
-- 360° environmental scanning via rotating micro servo motors
-- Reactive path optimization using geometric motion modeling
-- Differential-drive control using TT DC motors and L298N motor drivers
-- Onboard estimation of rover orientation and relative X–Y position
-- Custom-designed and 3D-printed chassis with multi-domain power distribution
+Autonomous decision-making is achieved through the application of fundamental principles in motion control, signal timing, and geometric interpretation. In addition to software design, careful consideration was given to power distribution and mechanical constraints, including the use of a 3D-printed chassis and the separation of power domains between logic and actuation components to ensure stable operation.
 
 ---
 
-## System Architecture
+## System Modeling and Software Architecture
 
-### Hardware Platform
-- **Microcontroller:** Arduino Mega  
-- **Motors:** 4× TT DC motors (differential drive)  
-- **Motor Drivers:** 2× L298N dual H-bridge drivers  
-- **Sensors:** 3× Ultrasonic distance sensors  
-- **Actuators:** 3× SG90 micro servo motors  
-- **Power:** Isolated battery domains with LM7805 voltage regulation  
-- **Chassis:** Custom 3D-printed (TinkerCAD design)
+The rover interprets physical sensor data using unit conversions, geometric modeling, and trigonometric calculations to estimate its orientation and position. All quantities are computed relative to the rover’s initial position; hence, the initial X and Y coordinates, as well as the heading angle relative to the Y-axis, are initialized to zero.
 
-### Software Architecture
-- Modular Arduino firmware
-- Sensor acquisition and filtering
-- Servo-driven scanning routines
-- Kinematic modeling for orientation and displacement
-- Reactive navigation algorithm with reservation / fulfillment phases
+### Kinematic Interpretation
+
+The angular position of each servo motor is directly available in degrees; however, the rover’s global heading may not be explicitly measured. The heading in a turning maneuver must estimated from the elapsed rotation time and the linear velocity of the wheels relative to the previous pose, using the horizontal separation between the wheels:
+
+Wheel linear velocity is derived from the motor RPM and wheel diameter:
+
+\[C = \pi d\]
+
+\[v = \frac{\text{RPM}}{60} \cdot C\]
+
+where \( d = 65\,\text{mm} \) is the wheel diameter and \( C \) is the wheel circumference.
+
+The angular velocity of the rover during a turn may then be derived as:
+
+\[\omega = \frac{2v}{w}\]
+
+where \( w = 126\,\text{mm} \) is the wheel separation.
+
+The change in heading over time is then computed as:
+
+\[\Delta \theta = \omega \cdot \Delta t\]
+
+Distance traveled is estimated from linear velocity:
+
+\[\Delta s = v \cdot \Delta t\]
+
+Using these quantities, the rover’s pose is updated iteratively:
+
+\[\theta_{k+1} = \theta_k + \Delta \theta\]
+
+\[x_{k+1} = x_k + \Delta s \cdot \cos(\theta_{k+1})\]
+
+\[y_{k+1} = y_k + \Delta s \cdot \sin(\theta_{k+1})\]
+
+This model enables continuous estimation of rover orientation and displacement without reliance on external localization systems, making it well-suited for embedded, resource-constrained platforms.
 
 ---
 
 ## Navigation Algorithm
 
-The rover’s autonomous behavior follows a **two-stage reactive navigation loop**:
+The rover’s autonomous navigation logic is structured around a **two-stage reactive path optimization process** consisting of a *reservation phase* and a *fulfillment phase*.
 
 1. **Reservation Phase**  
    - Front-mounted ultrasonic sensor sweeps 45°–135°
-   - Obstacle detected if distance < 25 cm
-   - Rover brakes and halts motion
+   - Flags when obstacle is detected within 25 cm 
+   - Rover brakes and transitions to fulfillment phase
 
 2. **Fulfillment Phase**  
    - Rear-mounted ultrasonic sensors perform a full 360° scan
-   - Direction with maximum clearance is selected
-   - Rover rotates toward the optimal heading
+   - Direction with maximum clearance is returned
+   - Rover rotates toward the optimal rotation angle
    - Heading change is estimated via wheel kinematics and elapsed time
+   - Flags when rover rotation aligns within ±5° of the optimal heading
+   - Rover halts left-turn maneuver andresumes forward motion 
 
-Once aligned within ±5°, the rover resumes forward motion and repeats the cycle.
+---
+
+## Power Distribution and Hardware Considerations
+
+The rover employs multiple isolated power domains to ensure reliable operation and prevent electrical instability. Four batteries are used to independently supply power to the Arduino, the front and rear L298N motor drivers, and the servo motors.
+
+Each pair of TT DC motors connected to an L298N motor driver requires a continuous 6 V supply. The isolation of the motor power from the Arduino prevents voltage drops and noise. Servo motors present an additional constraint: under load, they draw up to 650 mA, exceeding the Arduino’s maximum current output of approximately 500 mA. Furthermore, servo motors are not designed to accept a 9 V input, as excessive voltage can lead to overheating or permanent damage; hence, an LM7805 voltage regulator is used to step down the 9 V battery input to a stable 5 V supply dedicated to the servo motors.
 
 ---
 
@@ -68,40 +86,43 @@ autonomous-rover/
 ├── README.md
 │
 ├── docs/
-│   ├── report.pdf
 │   ├── figures/
-│   │   ├── circuit_diagram.png
-│   │   ├── chassis_layers.png
-│   │   └── test_environment.jpg
-│   └── videos/
-│       └── rover_demo.mp4
+│      ├── circuit_diagram.png  # circuit diagram of the autonomous rover
+│      ├── chassis_layers.png   # configurations of the 3D Print
+│      └── test_environment.jpg # testing environment for the rover
 │
 ├── firmware/
-│   ├── rover_main/
-│   │   ├── rover_main.ino
-│   │   ├── motor_control.h
-│   │   ├── motor_control.cpp
-│   │   ├── ultrasonic.h
-│   │   ├── ultrasonic.cpp
-│   │   ├── navigation.h
-│   │   ├── navigation.cpp
-│   │   └── config.h
-│   └── README.md
+│   ├── rover_automation.i/
+│   │   ├── rover_automation.i.ino
 │
 ├── hardware/
-│   ├── stl/
-│   │   ├── chassis_base.stl
-│   │   ├── motor_mount.stl
-│   │   ├── sensor_mount_front.stl
-│   │   └── sensor_mount_rear.stl
-│   ├── tinkercad/
-│   │   └── rover_chassis_design.json
-│   └── README.md
-│
-├── media/
-│   ├── thumbnails/
-│   └── gifs/
-│       └── rover_navigation.gif
-│
-└── .gitignore
+    ├── Rover_Chassis_Bottom_Layer.stl
+    ├── Rover_Chassis_Bottom_Layer.stl
 ```
+
+## Results
+
+The performance of the autonomous rover was primarily evaluated through video recordings of its operation, as autonomous navigation and real-time path optimization are not easily captured using scalar performance metrics. A full demonstration of the rover’s behavior may be viewed in the accompanying YouTube video:
+
+**▶️ Demonstration Video:** *(link to be added)*
+
+Testing was conducted within a confined artificial environment bounded by four walls and populated with randomly placed obstacles. To ensure consistency and fairness during evaluation, only obstacles with uniform dimensions were used. This constraint was necessary because the ultrasonic sensors operate at a fixed height; obstacles with irregular or non-uniform geometries fall outside the design assumptions of the sensing system and could lead to inaccurate or misleading distance measurements.
+
+---
+
+## Discussion
+
+The rover consistently and successfully navigated the test environment across multiple trials. Its behavior closely matched the designed navigation algorithm, repeatedly executing the expected sequence of halting upon obstacle detection, activating the rear-mounted scanning sensors, rotating toward the direction of maximum perceived clearance, and resuming forward motion.
+
+The rover also demonstrated robust performance in challenging scenarios, including navigation near corners and situations involving multiple surrounding obstacles. The consistent success observed across trials also reflects the effectiveness of the rover’s power distribution and mechanical design as no instances of component overheating, electrical malfunction, or structural instability were observed during testing. 
+
+## Future Improvements
+
+The autonomous rover developed in this project does not actively use the computed real-time X and Y position coordinates due to the absence of a wireless transceiver as well as the absense of higher-level behaviors to leverage the positional data. 
+
+### Wireless Communication and Remote Control
+A natural next step for this project is the integration of a **LoRa communication module**, a long-range, low-power radio technology designed for transmitting small data packets over extended distances. The enhancement would enable remote telemetry, allowing real-time transmission of position and sensor data without a physical connection. and support a manual control mode, where the rover may be operated through user inputs.
+
+### Improved Motion Accuracy
+The accuracy of the rover’s motion and sensor-derived data could be significantly improved through the addition of **wheel encoders**. The current system estimates movement using theoretical wheel RPM values, which may deviate due to surface friction, slippage, and mechanical inefficiencies. Wheel encoders would provide direct feedback on wheel rotation, enabling more precise distance estimation.
+
