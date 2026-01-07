@@ -18,48 +18,29 @@ The rover interprets physical sensor data using unit conversions, geometric mode
 
 The rover estimates its orientation and position using wheel kinematics and elapsed time, without relying on external localization systems.
 
-**Servo angles** are read directly in degrees; however, the rover’s **global heading** cannot be measured directly and must be estimated using wheel kinematics and elapsed time.
+Servo angles are read directly in degrees; however, the rover’s global heading cannot be measured directly and must be estimated using wheel kinematics and elapsed time.
 
 The heading is estimated from:
-  - The **linear velocity of the wheels**
-  - The **elapsed time spent rotating**
-  - The **horizontal separation between the wheels**
+  - The linear velocity of the wheels
+  - The elapsed time spent rotating
+  - The horizontal separation between the wheels
 
-**Wheel linear velocity** is computed from the wheel diameter (65 mm) and motor speed (RPM):
+Wheel linear velocity (v) is computed from the wheel diameter (65 mm) and motor speed (RPM):
+v =  PI * 65 * (RPM/60).
+Angular velocity (w) of the rover's turn is derived from differential wheel motion and wheel separation (126 mm):
+w = ((2 * v) / 126) * (180/PI) 
+Distance (d) the rover traveled over a control interval (t) is estimated as:
+d = v * t
+Therefore, the incremental kinematic update of the heading (theta) is defined as: 
 
-  \[
-  v = \pi \cdot D \cdot \frac{\text{RPM}}{60}
-  \]
+theta_{t+1} = theta_t + w * t
 
-**Angular velocity during a turn** is derived from differential wheel motion and wheel separation (126 mm):
+where the position is updated in the 2D plane (x, y) using standard planar motion equations:
 
-  \[
-  \omega = \frac{2v}{W} \cdot \frac{180}{\pi}
-  \]
+x_{t+1} = x_t + d * cos(theta_{t+1})
+y_{t+1} = y_t + d * sin(theta_{t+1})
 
-- **Distance traveled** over a control interval is estimated as:
-
-  \[
-  d = v \cdot \Delta t
-  \]
-
-- **Heading is updated incrementally** using the estimated angular velocity:
-
-  \[
-  \theta_{t+1} = \theta_t + \omega \cdot \Delta t
-  \]
-
-- **Position is updated in the 2D plane** using standard planar motion equations:
-
-  \[
-  x_{t+1} = x_t + d \cdot \cos(\theta)
-  \]
-
-  \[
-  y_{t+1} = y_t + d \cdot \sin(\theta)
-  \]
-
-This incremental kinematic update loop enables continuous estimation of the rover’s **orientation** and **relative X–Y position** during autonomous operation, while remaining lightweight and computationally efficient for embedded hardware.
+The incremental kinematic update loop enables continuous estimation of the rover’s orientation and relative X–Y position during autonomous operation.
 
 ---
 
