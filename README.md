@@ -98,7 +98,7 @@ autonomous-rover/
 
 The performance of the autonomous rover was primarily evaluated through video recordings of its operation, as autonomous navigation and real-time path optimization are not easily captured using scalar performance metrics. A full demonstration of the rover’s behavior may be viewed in the accompanying YouTube video:
 
-**▶️ Demonstration Video:** *(link to be added)*
+ [**▶️ Demonstration Video:**](https://youtu.be/_U4xwGOMszU)
 
 Testing was conducted within a confined artificial environment bounded by four walls and populated with randomly placed obstacles. To ensure consistency and fairness during evaluation, only obstacles with uniform dimensions were used. This constraint was necessary because the ultrasonic sensors operate at a fixed height; obstacles with irregular or non-uniform geometries fall outside the design assumptions of the sensing system and could lead to inaccurate or misleading distance measurements.
 
