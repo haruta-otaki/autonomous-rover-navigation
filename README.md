@@ -26,11 +26,17 @@ The heading is estimated from:
   - The horizontal separation between the wheels
 
 Wheel linear velocity (v) is computed from the wheel diameter (65 mm) and motor speed (RPM):
+
 v =  PI * 65 * (RPM/60).
+
 Angular velocity (w) of the rover's turn is derived from differential wheel motion and wheel separation (126 mm):
+
 w = ((2 * v) / 126) * (180/PI) 
+
 Distance (d) the rover traveled over a control interval (t) is estimated as:
+
 d = v * t
+
 Therefore, the incremental kinematic update of the heading (theta) is defined as: 
 
 theta_{t+1} = theta_t + w * t
